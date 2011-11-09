@@ -11,7 +11,7 @@ WriteMakefile
 		'Test::More'    => 0,
 		'Data::Compare' => 0,
 		'MooseX::Clone' => 0,
-		eval { require YAML::Syck } ? do { 'YAML::Syck' => '0.82' } : (),
+		'YAML'          => 0,
 	},
 	INSTALLDIRS  => 'site',
 	EXE_FILES    => [],

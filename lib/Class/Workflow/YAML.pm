@@ -4,7 +4,7 @@ package Class::Workflow::YAML;
 use Moose;
 
 use Class::Workflow;
-use YAML::Syck ();
+use YAML ();
 
 has workflow_key => (
 	isa => "Str",
@@ -12,25 +12,33 @@ has workflow_key => (
 	default => "workflow",
 );
 
-use tt;
-[% FOR type IN ["string", "file"] %]
-sub load_[% type %] {
+sub load_string {
 	my ( $self, $data ) = @_;
-	my $res = $self->localize_yaml_env( _load_[% type %] => $data );
+	my $res = $self->localize_yaml_env( _load_string => $data );
 	my $workflow = $self->empty_workflow;
 	$self->inflate_hash( $workflow, $res );
 }
 
-sub _load_[% type %] {
-	my ( $self, $data ) = @_;
-	YAML::Syck::Load[% IF type == "file" %]File[% END %]( $data );
+sub load_file {
+        my ( $self, $data ) = @_;
+        my $res = $self->localize_yaml_env( _load_file => $data );
+        my $workflow = $self->empty_workflow;
+        $self->inflate_hash( $workflow, $res );
 }
-[% END %]
-no tt;
+
+sub _load_string {
+	my ( $self, $data ) = @_;
+	YAML::Load( $data );
+}
+
+sub _load_file {
+        my ( $self, $data ) = @_;
+        YAML::LoadFile( $data );
+}
 
 sub localize_yaml_env {
 	my ( $self, $method, @args ) = @_;
-	local $YAML::Syck::UseCode = 1;
+	local $YAML::UseCode = 1;
 	$self->$method( @args );
 }
 
