@@ -9,7 +9,6 @@ WriteMakefile
 		'Moose'         => '0.93',
 		'Set::Object'   => '1.19',
 		'Test::More'    => 0,
-		'Test::use::ok' => 0,
 		'Data::Compare' => 0,
 		'MooseX::Clone' => 0,
 		eval { require YAML::Syck } ? do { 'YAML::Syck' => '0.82' } : (),
