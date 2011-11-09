@@ -37,140 +37,209 @@ sub new_instance {
 	$self->instance_class->new( %attrs );
 }
 
-use tt fields => [qw/state transition/];
-[% FOREACH field IN fields %]
-
-has [% field %]_class => (
-	isa => "Str",
-	is  => "rw",
-	default => "Class::Workflow::[% field | ucfirst %]::Simple",
+has state_class => (
+        isa => "Str",
+        is  => "rw",
+        default => "Class::Workflow::State::Simple",
 );
 
-has _[% field %]s => (
-	isa => "HashRef",
-	is  => "ro",
-	default => sub { return {} },
+has transition_class => (
+        isa => "Str",
+        is  => "rw",
+        default => "Class::Workflow::Transition::Simple",
 );
 
-sub [% field %]s {
-	my $self = shift;
-	values %{ $self->_[% field %]s };
+has _state_fields => (
+        isa => "HashRef",
+        is  => "ro",
+        traits => [ 'Hash' ],
+        default => sub { return {} },
+        handles => {
+                states => 'values',
+                state_names => 'keys',
+                get_state => 'get',
+                get_states => 'get',
+                add_state => 'set',
+                delete_state => 'delete',
+                has_state => 'exists',
+        },
+);
+
+has _transition_fields => (
+        isa => "HashRef",
+        is  => "ro",
+        traits => [ 'Hash' ],
+        default => sub { return {} },
+        handles => {
+                transitions => 'values',
+                transition_names => 'keys',
+                get_transition => 'get',
+                get_transitions => 'get',
+                add_transition => 'set',
+                delete_transition => 'delete',
+                has_transition => 'exists',
+        },
+);
+
+sub rename_state {
+        my ( $self, $name, $new_name ) = @_;
+        my $obj = $self->delete_state( $name );
+        $obj->name( $new_name ) if $obj->can("name");
+        $self->add_state( $new_name => $obj );
 }
 
-sub [% field %]_names {
-	my $self = shift;
-	keys %{ $self->_[% field %]s };
+sub rename_transition {
+        my ( $self, $name, $new_name ) = @_;
+        my $obj = $self->delete_transition( $name );
+        $obj->name( $new_name ) if $obj->can("name");
+        $self->add_transition( $new_name => $obj );
 }
 
-sub [% field %] {
-	my ( $self, @params ) = @_;
-
-	if ( @params == 1 ) {
-		if ( ref($params[0]) eq "HASH" ) {
-			@params = %{ $params[0] };
-		} elsif ( ref($params[0]) eq "ARRAY" ) {
-			@params = @{ $params[0] };
-		}
-	}
-
-	if ( !blessed($params[0]) and !blessed($params[1]) and @params % 2 == 0 ) {
-		# $wf->state( name => "foo", transitions => [qw/bar gorch/] )
-		return $self->create_or_set_[% field %]( @params );
-	} elsif ( !ref($params[0]) and @params % 2 == 1 ) {
-		# my $state = $wf->state("new", %attrs); # create new by name, or just get_foo
-		return $self->create_or_set_[% field %]( name => @params )
-	} elsif ( @params == 1 and blessed($params[0]) and $params[0]->can("name") ) {
-		# $wf->state( $state ); # set by object (if $object->can("name") )
-		return $self->add_[% field %]( $params[0]->name => $params[0] );
-	} elsif ( @params == 2 and blessed($params[1]) and !ref($params[0]) ) {
-		# $wf->state( foo => $state ); # set by name
-		return $self->add_[% field %]( @params );
-	} else {
-		if ( @params == 1 and blessed($params[0]) ) {
-			croak "The [% field %] $params[0] must support the 'name' method.";
-		} else {
-			croak "'[% field %]' was called with invalid parameters. Please consult the documentation.";
-		}
-	}
+sub create_state {
+        my ( $self, $name, @attrs ) = @_;
+        $self->add_state( $name => $self->construct_state( @attrs ) );
 }
 
-sub get_[% field %] {
-	my ( $self, $name ) = @_;
-	$self->_[% field %]s->{$name}
+sub create_transition {
+        my ( $self, $name, @attrs ) = @_;
+        $self->add_transition( $name => $self->construct_transition( @attrs ) );
 }
 
-sub get_[% field %]s {
-	my ( $self, @names ) = @_;
-	@{ $self->_[% field %]s }{@names}
+sub construct_state {
+        my ( $self, %attrs ) = @_;
+        my $class = delete($attrs{class}) || $self->state_class;
+        $class->new( %attrs );
 }
 
-sub add_[% field %] {
-	my ( $self, $name, $obj ) = @_;
-	
-	if ( exists $self->_[% field %]s->{$name} ) {
-		croak "$name already exists, delete it first."
-			unless refaddr($obj) == refaddr($self->_[% field %]s->{$name});
-		return $obj;
-	} else {
-		return $self->_[% field %]s->{$name} = $obj;
-	}
+sub construct_transition {
+        my ( $self, %attrs ) = @_;
+        my $class = delete($attrs{class}) || $self->transition_class;
+        $class->new( %attrs );
 }
 
-sub rename_[% field %] {
-	my ( $self, $name, $new_name ) = @_;
-	my $obj = $self->delete_[% field %]( $name );
-	$obj->name( $new_name ) if $obj->can("name");
-	$self->add_[% field %]( $new_name => $obj );
+sub autovivify_states {
+        my ( $self, $thing ) = @_;
+
+        no warnings 'uninitialized';
+        if ( ref $thing eq "ARRAY" ) {
+                return [ map { $self->state( $_ ) } @$thing ];
+        } else {
+                return $self->state( $thing );
+        }
 }
 
-sub delete_[% field %] {
-	my ( $self, $name ) = @_;
-	delete $self->_[% field %]s->{$name};
+sub autovivify_transitions {
+        my ( $self, $thing ) = @_;
+
+        no warnings 'uninitialized';
+        if ( ref $thing eq "ARRAY" ) {
+                return [ map { $self->transition( $_ ) } @$thing ];
+        } else {
+                return $self->transition( $thing );
+        }
 }
 
-sub create_[% field %] {
-	my ( $self, $name, @attrs ) = @_;
-	$self->add_[% field %]( $name => $self->construct_[% field %]( @attrs ) );
+sub create_or_set_state {
+        my ( $self, %attrs ) = @_;
+
+        my $name = $attrs{name} || croak "Every state must have a name";
+
+        $self->expand_attrs( \%attrs );
+
+        if ( my $obj = $self->get_state( $name ) ) {
+                delete $attrs{name};
+                foreach my $attr ( keys %attrs ) {
+                        $obj->$attr( $attrs{$attr} );
+                }
+
+                return $obj;
+        } else {
+                return $self->create_state( $name, %attrs );
+        }
 }
 
-sub construct_[% field %] {
-	my ( $self, %attrs ) = @_;
-	my $class = delete($attrs{class}) || $self->[% field %]_class;
-	$class->new( %attrs );
+sub create_or_set_transition {
+        my ( $self, %attrs ) = @_;
+
+        my $name = $attrs{name} || croak "Every transition must have a name";
+
+        $self->expand_attrs( \%attrs );
+
+        if ( my $obj = $self->get_transition( $name ) ) {
+                delete $attrs{name};
+                foreach my $attr ( keys %attrs ) {
+                        $obj->$attr( $attrs{$attr} );
+                }
+
+                return $obj;
+        } else {
+                return $self->create_transition( $name, %attrs );
+        }
 }
 
-sub autovivify_[% field %]s {
-	my ( $self, $thing ) = @_;
+sub state {
+        my ( $self, @params ) = @_;
 
-	no warnings 'uninitialized';
-	if ( ref $thing eq "ARRAY" ) {
-		return [ map { $self->[% field %]( $_ ) } @$thing ];
-	} else {
-		return $self->[% field %]( $thing );
-	}
+        if ( @params == 1 ) {
+                if ( ref($params[0]) eq "HASH" ) {
+                        @params = %{ $params[0] };
+                } elsif ( ref($params[0]) eq "ARRAY" ) {
+                        @params = @{ $params[0] };
+                }
+        }
+
+        if ( !blessed($params[0]) and !blessed($params[1]) and @params % 2 == 0 ) {
+                # $wf->state( name => "foo", transitions => [qw/bar gorch/] )
+                return $self->create_or_set_state( @params );
+        } elsif ( !ref($params[0]) and @params % 2 == 1 ) {
+                # my $state = $wf->state("new", %attrs); # create new by name, or just get_foo
+                return $self->create_or_set_state( name => @params )
+        } elsif ( @params == 1 and blessed($params[0]) and $params[0]->can("name") ) {
+                # $wf->state( $state ); # set by object (if $object->can("name") )
+                return $self->add_state( $params[0]->name => $params[0] );
+        } elsif ( @params == 2 and blessed($params[1]) and !ref($params[0]) ) {
+                # $wf->state( foo => $state ); # set by name
+                return $self->add_state( @params );
+        } else {
+                if ( @params == 1 and blessed($params[0]) ) {
+                        croak "The state $params[0] must support the 'name' method.";
+                } else {
+                        croak "'state' was called with invalid parameters. Please consult the documentation.";
+                }
+        }
 }
 
-sub create_or_set_[% field %] {
-	my ( $self, %attrs ) = @_;
+sub transition {
+        my ( $self, @params ) = @_;
 
-	my $name = $attrs{name} || croak "Every [% field %] must have a name";
+        if ( @params == 1 ) {
+                if ( ref($params[0]) eq "HASH" ) {
+                        @params = %{ $params[0] };
+                } elsif ( ref($params[0]) eq "ARRAY" ) {
+                        @params = @{ $params[0] };
+                }
+        }
 
-	$self->expand_attrs( \%attrs );
-
-	if ( my $obj = $self->get_[% field %]( $name ) ) {
-		delete $attrs{name};
-		foreach my $attr ( keys %attrs ) {
-			$obj->$attr( $attrs{$attr} );
-		}
-
-		return $obj;
-	} else {
-		return $self->create_[% field %]( $name, %attrs );
-	}
+        if ( !blessed($params[0]) and !blessed($params[1]) and @params % 2 == 0 ) {
+                # $wf->state( name => "foo", transitions => [qw/bar gorch/] )
+                return $self->create_or_set_transition( @params );
+        } elsif ( !ref($params[0]) and @params % 2 == 1 ) {
+                # my $state = $wf->state("new", %attrs); # create new by name, or just get_foo
+                return $self->create_or_set_transition( name => @params )
+        } elsif ( @params == 1 and blessed($params[0]) and $params[0]->can("name") ) {
+                # $wf->state( $state ); # set by object (if $object->can("name") )
+                return $self->add_transition( $params[0]->name => $params[0] );
+        } elsif ( @params == 2 and blessed($params[1]) and !ref($params[0]) ) {
+                # $wf->state( foo => $state ); # set by name
+                return $self->add_transition( @params );
+        } else {
+                if ( @params == 1 and blessed($params[0]) ) {
+                        croak "The transition $params[0] must support the 'name' method.";
+                } else {
+                        croak "'transition' was called with invalid parameters. Please consult the documentation.";
+                }
+        }
 }
-
-[% END %]
-no tt;
 
 sub expand_attrs {
 	my ($self, $attrs ) = @_;
