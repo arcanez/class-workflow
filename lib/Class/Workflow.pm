@@ -379,13 +379,11 @@ tracking application:
 
 =over 4
 
-The initial state is 'new'
+=item The initial state is 'new'
 
 =item new
 
 New bugs arrive here.
-
-=over 4
 
 =item reject
 
@@ -399,8 +397,6 @@ This bug needs to be worked on.
 
 Target state: C<open>.
 
-=back
-
 =item rejected
 
 This is the state where deleted bugs go, it has no transitions.
@@ -408,8 +404,6 @@ This is the state where deleted bugs go, it has no transitions.
 =item open
 
 The bug is being worked on right now.
-
-=over 4
 
 =item reassign
 
@@ -423,13 +417,9 @@ The bug looks fixed, and needs verifification.
 
 Target state: C<awaiting_approval>.
 
-=back
-
 =item unassigned
 
 The bug is waiting for a developer to take it.
-
-=over 4
 
 =item take
 
@@ -437,13 +427,9 @@ Volunteer to handle the bug.
 
 Target state: C<open>.
 
-=back
-
 =item awaiting_approval
 
 The submitter needs to verify the bug.
-
-=over 4
 
 =item resolved
 
