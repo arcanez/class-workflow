@@ -1,8 +1,9 @@
+use strict;
+use warnings FATAL => 'all';
+use 5.008001;
 use ExtUtils::MakeMaker;
 
-
-WriteMakefile
-(
+WriteMakefile(
 	NAME         => 'Class::Workflow',
 	VERSION_FROM => 'lib/Class/Workflow.pm',
 	PREREQ_PM    => {
@@ -17,5 +18,4 @@ WriteMakefile
 	EXE_FILES    => [],
 	PL_FILES     => {},
 	SIGN         => 1,
-)
-;
+);
