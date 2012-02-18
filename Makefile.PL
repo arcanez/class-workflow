@@ -9,11 +9,13 @@ WriteMakefile(
 	PREREQ_PM    => {
 		'Moose'         => '0.93',
 		'Set::Object'   => '1.19',
-		'Test::More'    => 0,
 		'Data::Compare' => 0,
 		'MooseX::Clone' => 0,
 		'YAML'          => 0,
 	},
+        BUILD_REQUIRES => {
+		'Test::More'    => 0,
+        },
 	INSTALLDIRS  => 'site',
 	EXE_FILES    => [],
 	PL_FILES     => {},
