@@ -1,3 +1,11 @@
+0.11_01 - drop use of TT
+        - use Moose native traits (bump req to 0.93)
+        - use YAML instead of YAML::Syck
+        - drop 'use ok' in favor of use_ok
+
+0.11
+        - CPAN release
+
 0.10
 	- use MooseX::Clone for cloning
 	- fix for new warnings from Moose
